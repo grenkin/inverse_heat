@@ -110,6 +110,38 @@ double d_phi_phi (double u)
     return kappa_a;
 }
 
+// calculate the solution at one time step
+// sol is a vector of size 2:
+//   initially sol contains the solution at the previous time step (m-1),
+//   finally sol contains the solution at the current time step m
+// q is the value of q(t) at the time interval (t_{m-1}, t_m)
+// tau is the time grid step
+void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q, double tau)
+{
+    int N = data.grid.K[0];
+    for (int n = 0; n <= N; ++n) {
+        double x = data.grid.coord(0, n);
+        data.g[0](0, n) = q * f(x) + 1. / tau * sol[0](0, n);
+        data.g[1](0, n) = 0.0;
+    }
+    SolveBVP1D(data, Parameters1D(), sol);
+}
+
+// calculate int_0^L g(x) theta(x) dx
+double CalcIntegral (const Grid1D& grid, const GridFunction1D& theta)
+{
+    double s = 0.0;
+    for (int n = 0; n <= N; ++n) {
+        double x = grid.coord(0, n);
+        double theta_val = theta(0, n);
+        double term = g(x) * theta_val;
+        if (n == 0 || n == N)
+            term /= 2;
+        s += term;
+    }
+    return s * grid.h[0];
+}
+
 int main() {
     vector<double> Lvec(1);  Lvec[0] = L;
     vector<int> Nvec(1);  Nvec[0] = N;
@@ -126,17 +158,19 @@ int main() {
     data.f[0][0][1] = theta_phi;  data.df[0][0][1] = d_theta_phi;
     data.f[1][0][0] = phi_theta;  data.df[1][0][0] = d_phi_theta;
     data.f[1][0][1] = phi_phi;  data.df[1][0][1] = d_phi_phi;
-    vector<double> c(2);
-    c[0] = 1;  c[1] = 0;
+
     double tau = T / M;
+
+    vector<double> c(2);
+    c[0] = 1.0;  c[1] = 0.0;
     for (int i = 0; i < 2; ++i)
         data.c[i] = c[i] / tau;
 
     vector<GridFunction1D> sol(2);
-    vector<TimeGridFunction1D> sol_time(2);
+    // vector<TimeGridFunction1D> sol_time(2);
     for (int i = 0; i < 2; ++i) {
         sol[i].set_grid(grid);
-        sol_time[i].set_grid(grid, M);
+        // sol_time[i].set_grid(grid, M);
     }
 
     // set the initial condition
@@ -145,7 +179,7 @@ int main() {
         for (int n = 0; n <= N; ++n) {
             double x = grid.coord(0, n);
             sol[i](0, n) = theta_init(x);
-            sol_time[i](0, 0, n) = sol[i](0, n);
+            // sol_time[i](0, 0, n) = sol[i](0, n);
         }
         // The solution for i = 1 (phi) is undefined.
         // The stationary equation for phi has to be solved
@@ -153,40 +187,28 @@ int main() {
     }
 
     // set the function q(t)
+    // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
     vector<double> q(M + 1);
     for (int m = 0; m <= M; ++m) {
         double t = m * tau;
         q[m] = q_fun(t);
     }
 
-    // solve the nonstationary problem
+    // solve the nonstationary problem and calculate the integral
+    vector<double> r(M + 1);
+    // now sol[0] contains the initial function and sol[1] is undefined
+    r[0] = CalcIntegral(grid, sol[0]);
     for (int m = 1; m <= M; ++m) {
-        // sol contains the solution from the previous time step
-        for (int n = 0; n <= N; ++n) {
-            double x = grid.coord(0, n);
-            data.g[0](0, n) = q[m] * f(x) + c[0] / tau * sol[0](0, n);
-            data.g[1](0, n) = c[1] / tau * sol[1](0, n);  // == 0
-        }
-        SolveBVP1D(data, Parameters1D(), sol);
+        // now sol contains the solution from the previous time step
+        CalcSol(data, sol, q[m], tau);
+        /*
         for (int i = 0; i < 2; ++i) {
             for (int n = 0; n <= N; ++n)
                 sol_time[i](m, 0, n) = sol[i](0, n);
         }
-    }
-
-    // calculate r(t) = int_0^L g(x) theta(x,t) dx
-    vector<double> r(M + 1);
-    for (int m = 0; m <= M; ++m) {
-        double s = 0.0;
-        for (int n = 0; n <= N; ++n) {
-            double x = grid.coord(0, n);
-            double theta = sol_time[0](m, 0, n);
-            double term = g(x) * theta;
-            if (n == 0 || n == N)
-                term /= 2;
-            s += term;
-        }
-        r[m] = s * grid.h[0];
+        */
+        // calculate r(t_m) = int_0^L g(x) theta(x,t_m) dx
+        r[m] = CalcIntegral(grid, sol[0]);
     }
 
     // output r(t)
