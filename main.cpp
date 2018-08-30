@@ -1,3 +1,15 @@
+/*
+theta_t - a theta_xx + b kappa_a (theta^4 - phi) = q(t) f(x)
+- alpha phi_xx + kappa_a (phi - theta^4) = 0,  x in (0, L), t in (0, T)
+- a theta_x + beta (theta - theta_b) = 0 at x = 0
+a theta_x + beta (theta - theta_b) = 0 at x = L
+- alpha phi_x + gamma (phi - theta_b^4) = 0 at x = 0
+alpha phi_x + gamma (phi - theta_b^4) = 0 at x = L
+theta = theta_0 at t = 0
+
+Problem: find q(t) for given r(t) = int_0^L g(x) theta(x,t) dx
+*/
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -20,14 +32,19 @@ const double beta = 10;
 const double gamma = 0.3;
 const double theta_b1 = 0.3;
 const double theta_b2 = 0.8;
+
 // initial condition
-const double theta_init = 1;
+double theta_init (double x)
+{
+    const double theta_init_val = 1;
+    return theta_init_val;
+}
 
 // function f(x) in the source term
 double f (double x)
 {
     if (x < L / 2)
-        return 1.0;
+        return 1.0e-1;
     else
         return 0.0;
 }
@@ -110,7 +127,7 @@ int main() {
     data.f[1][0][0] = phi_theta;  data.df[1][0][0] = d_phi_theta;
     data.f[1][0][1] = phi_phi;  data.df[1][0][1] = d_phi_phi;
     vector<double> c(2);
-    c[0] = 1; c[1] = 0;
+    c[0] = 1;  c[1] = 0;
     double tau = T / M;
     for (int i = 0; i < 2; ++i)
         data.c[i] = c[i] / tau;
@@ -126,10 +143,13 @@ int main() {
     {
         int i = 0;
         for (int n = 0; n <= N; ++n) {
-            sol[i](0, n) = theta_init;
+            double x = grid.coord(0, n);
+            sol[i](0, n) = theta_init(x);
             sol_time[i](0, 0, n) = sol[i](0, n);
         }
-        // the solution for i = 1 (phi) is undefined
+        // The solution for i = 1 (phi) is undefined.
+        // The stationary equation for phi has to be solved
+        //   in order to calculate phi at t = 0.
     }
 
     // set the function q(t)
@@ -141,10 +161,11 @@ int main() {
 
     // solve the nonstationary problem
     for (int m = 1; m <= M; ++m) {
+        // sol contains the solution from the previous time step
         for (int n = 0; n <= N; ++n) {
             double x = grid.coord(0, n);
             data.g[0](0, n) = q[m] * f(x) + c[0] / tau * sol[0](0, n);
-            data.g[1](0, n) = c[1] / tau * sol[1](0, n);
+            data.g[1](0, n) = c[1] / tau * sol[1](0, n);  // == 0
         }
         SolveBVP1D(data, Parameters1D(), sol);
         for (int i = 0; i < 2; ++i) {
@@ -153,7 +174,7 @@ int main() {
         }
     }
 
-    // calculate the integral
+    // calculate r(t) = int_0^L g(x) theta(x,t) dx
     vector<double> r(M + 1);
     for (int m = 0; m <= M; ++m) {
         double s = 0.0;
