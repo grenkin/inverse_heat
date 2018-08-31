@@ -18,6 +18,11 @@ Problem: find q(t) for given r(t) = int_0^L g(x) theta(x,t) dx
 
 using namespace std;
 
+// MODE_GIVEN_R - solve the inverse problem for given r(t)
+// MODE_GIVEN_Q - calculate r(t) for given q(t), then solve the inverse problem
+enum Mode {MODE_GIVEN_R, MODE_GIVEN_Q};
+const Mode mode = MODE_GIVEN_Q;
+
 const char* output_r_file_name = "output_r.txt";
 
 // lengths of the space and time intervals
@@ -58,10 +63,16 @@ double g (double x)
         return 0.0;
 }
 
-// the given function q(t) in the source term
+// the given function q(t) in the source term for the case of mode == MODE_GIVEN_Q
 double q_fun (double t)
 {
     return (T - t) / T;
+}
+
+// the given function r(t) for the case of mode == MODE_GIVEN_R
+double r_fun (double t)
+{
+    return 1.0;
 }
 
 // numbers of nodes of the grids
@@ -142,7 +153,8 @@ double CalcIntegral (const Grid1D& grid, const GridFunction1D& theta)
     return s * grid.h[0];
 }
 
-int main() {
+int main ()
+{
     vector<double> Lvec(1);  Lvec[0] = L;
     vector<int> Nvec(1);  Nvec[0] = N;
     Grid1D grid(Lvec, Nvec);
@@ -167,54 +179,57 @@ int main() {
         data.c[i] = c[i] / tau;
 
     vector<GridFunction1D> sol(2);
-    // vector<TimeGridFunction1D> sol_time(2);
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 2; ++i)
         sol[i].set_grid(grid);
-        // sol_time[i].set_grid(grid, M);
-    }
 
-    // set the initial condition
-    {
-        int i = 0;
-        for (int n = 0; n <= N; ++n) {
-            double x = grid.coord(0, n);
-            sol[i](0, n) = theta_init(x);
-            // sol_time[i](0, 0, n) = sol[i](0, n);
-        }
-        // The solution for i = 1 (phi) is undefined.
-        // The stationary equation for phi has to be solved
-        //   in order to calculate phi at t = 0.
-    }
-
-    // set the function q(t)
-    // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
-    vector<double> q(M + 1);
-    for (int m = 0; m <= M; ++m) {
-        double t = m * tau;
-        q[m] = q_fun(t);
-    }
-
-    // solve the nonstationary problem and calculate the integral
+    // r[m] = r(t_m) = int_0^L g(x) theta(x,t_m) dx, m = 0, 1, ..., M
     vector<double> r(M + 1);
-    // now sol[0] contains the initial function and sol[1] is undefined
-    r[0] = CalcIntegral(grid, sol[0]);
-    for (int m = 1; m <= M; ++m) {
-        // now sol contains the solution from the previous time step
-        CalcSol(data, sol, q[m], tau);
-        /*
-        for (int i = 0; i < 2; ++i) {
-            for (int n = 0; n <= N; ++n)
-                sol_time[i](m, 0, n) = sol[i](0, n);
+    if (mode == MODE_GIVEN_R) {
+        for (int m = 0; m <= M; ++m) {
+            double t = m * tau;
+            r[m] = r_fun(t);
         }
-        */
-        // calculate r(t_m) = int_0^L g(x) theta(x,t_m) dx
-        r[m] = CalcIntegral(grid, sol[0]);
     }
+    else {  // mode == MODE_GIVEN_Q
+        // calculate r(t) for the given q(t)
 
-    // output r(t)
-    ofstream fout(output_r_file_name);
-    for (int m = 0; m <= M; ++m)
-        fout << tau * m << "   " << r[m] << endl;
+        // set the function q(t)
+        // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
+        vector<double> q(M + 1);
+        for (int m = 0; m <= M; ++m) {
+            double t = m * tau;
+            q[m] = q_fun(t);
+        }
+
+        // set the initial condition
+        {
+            int i = 0;
+            for (int n = 0; n <= N; ++n) {
+                double x = grid.coord(0, n);
+                sol[i](0, n) = theta_init(x);
+            }
+            // The solution for i = 1 (phi) is undefined.
+            // The stationary equation for phi has to be solved
+            //   in order to calculate phi at t = 0.
+        }
+
+        // solve the nonstationary problem and calculate r(t)
+        // now sol[0] contains the initial function theta_0 and sol[1] is undefined
+        r[0] = CalcIntegral(grid, sol[0]);
+        for (int m = 1; m <= M; ++m) {
+            // now sol contains the solution from the previous time step
+            CalcSol(data, sol, q[m], tau);
+            // calculate r(t_m) = int_0^L g(x) theta(x,t_m) dx
+            r[m] = CalcIntegral(grid, sol[0]);
+        }
+
+        // output r(t)
+        ofstream fout(output_r_file_name);
+        for (int m = 0; m <= M; ++m)
+            fout << tau * m << "   " << r[m] << endl;
+    }  // if (mode)
+
+    // TODO: solve the inverse problem - find q(t) for given r(t)
 
     return 0;
 }
