@@ -24,6 +24,7 @@ enum Mode {MODE_GIVEN_R, MODE_GIVEN_Q};
 const Mode mode = MODE_GIVEN_Q;
 
 const char* output_r_file_name = "output_r.txt";
+const char* output_q_file_name = "output_q.txt";
 
 // lengths of the space and time intervals
 const double L = 50;
@@ -78,6 +79,11 @@ double r_fun (double t)
 // numbers of nodes of the grids
 const int N = 50;
 const int M = 50;
+
+// parameters of the bisection method
+const double q_init_guess = 0.0;  // initial guess
+const double q_init_len = 0.1;  // initial length of the interval
+const double q_tol = 1e-5;  // tolerance
 
 // functions of the reaction terms and their derivatives
 
@@ -154,6 +160,17 @@ double CalcIntegral (const Grid1D& grid, const GridFunction1D& theta)
     return s * grid.h[0];
 }
 
+// sol1 and sol2 are vectors of size 2
+// copy sol1 to sol2
+void copy_sol(const Grid1D& grid,
+    const vector<GridFunction1D>& sol1, vector<GridFunction1D>& sol2)
+{
+    for (int i = 0; i < 2; ++i) {
+        for (int n = 0; n <= N; ++n)
+            sol2[i](0, n) = sol1[i](0, n);
+    }
+}
+
 int main ()
 {
     vector<double> Lvec(1);  Lvec[0] = L;
@@ -179,9 +196,11 @@ int main ()
     for (int i = 0; i < 2; ++i)
         data.c[i] = c[i] / tau;
 
-    vector<GridFunction1D> sol(2);
-    for (int i = 0; i < 2; ++i)
+    vector<GridFunction1D> sol(2), sol_prev(2);
+    for (int i = 0; i < 2; ++i) {
         sol[i].set_grid(grid);
+        sol_prev[i].set_grid(grid);
+    }
 
     // r[m] = r(t_m) = int_0^L g(x) theta(x,t_m) dx, m = 0, 1, ..., M
     vector<double> r(M + 1);
@@ -218,8 +237,9 @@ int main ()
         // now sol[0] contains the initial function theta_0 and sol[1] is undefined
         r[0] = CalcIntegral(grid, sol[0]);
         for (int m = 1; m <= M; ++m) {
-            // now sol contains the solution from the previous time step
+            // now sol contains the solution at the previous time step
             CalcSol(data, sol, q[m], tau);
+            // now sol contains the solution at the current time step
             // calculate r(t_m) = int_0^L g(x) theta(x,t_m) dx
             r[m] = CalcIntegral(grid, sol[0]);
         }
@@ -230,8 +250,69 @@ int main ()
         for (int m = 0; m <= M; ++m)
             fout << tau * m << "   " << r[m] << endl;
     }  // if (mode)
+    // r[m], m = 0, 1, ..., M, are calculated
 
-    // TODO: solve the inverse problem - find q(t) for given r(t)
+    // solve the inverse problem - find q(t) for given r(t)
+
+    // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
+    vector<double> q(M + 1);
+
+    // sol_prev contains the solution at the previous time step
+    // set the initial condition
+    {
+        int i = 0;
+        for (int n = 0; n <= N; ++n) {
+            double x = grid.coord(0, n);
+            sol_prev[i](0, n) = theta_0(x);
+        }
+        // sol_prev[1] (phi) is undefined
+    }
+
+    double q_guess = q_init_guess;
+    for (int m = 1; m <= M; ++m) {
+        cout << "m = " << m << endl;
+        // Denote by I(q) the value of the integral r(t_m) with q[m] = q.
+        // Assume that I(q) is a monotonically increasing function.
+        // find q[m] = q as the solution of the equation I(q) = r[m]
+
+        // find q_1 and q_2 such that I(q_1) < r[m] and I(q_2) > r[m]
+        double q_1, q_2, len1, len2, I;
+        len1 = len2 = q_init_len / 4;  // length of the interval
+        do {
+            copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
+            len1 *= 2;
+            q_1 = q_guess - len1;
+            CalcSol(data, sol, q_1, tau);
+            I = CalcIntegral(grid, sol[0]);
+        } while (I >= r[m]);
+        do {
+            copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
+            len2 *= 2;
+            q_2 = q_guess + len2;
+            CalcSol(data, sol, q_2, tau);
+            I = CalcIntegral(grid, sol[0]);
+        } while (I <= r[m]);
+
+        // apply the bisection method
+        while (q_2 - q_1 >= q_tol) {
+            q_guess = (q_1 + q_2) / 2;
+            copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
+            CalcSol(data, sol, q_guess, tau);
+            I = CalcIntegral(grid, sol[0]);
+            if (I < r[m])
+                q_1 = q_guess;
+            else
+                q_2 = q_guess;
+        }
+        q[m] = q_guess;
+        copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
+    }
+
+    // output q(t)
+    ofstream fout(output_q_file_name);
+    fout.precision(10);
+    for (int m = 1; m <= M; ++m)
+        fout << tau * m << "   " << q[m] << endl;
 
     return 0;
 }
