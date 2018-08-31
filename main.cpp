@@ -38,11 +38,11 @@ const double gamma = 0.3;
 const double theta_b1 = 0.3;
 const double theta_b2 = 0.8;
 
-// initial condition
-double theta_init (double x)
+// initial condition theta_0(x)
+double theta_0 (double x)
 {
-    const double theta_init_val = 1;
-    return theta_init_val;
+    const double theta_0_val = 1;
+    return theta_0_val;
 }
 
 // function f(x) in the source term
@@ -54,7 +54,7 @@ double f (double x)
         return 0.0;
 }
 
-// function in the integral
+// function g(x) in the integral
 double g (double x)
 {
     if (x > L / 2)
@@ -141,6 +141,7 @@ void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q, double tau)
 // calculate int_0^L g(x) theta(x) dx
 double CalcIntegral (const Grid1D& grid, const GridFunction1D& theta)
 {
+    // trapezoid method
     double s = 0.0;
     for (int n = 0; n <= N; ++n) {
         double x = grid.coord(0, n);
@@ -206,7 +207,7 @@ int main ()
             int i = 0;
             for (int n = 0; n <= N; ++n) {
                 double x = grid.coord(0, n);
-                sol[i](0, n) = theta_init(x);
+                sol[i](0, n) = theta_0(x);
             }
             // The solution for i = 1 (phi) is undefined.
             // The stationary equation for phi has to be solved
@@ -225,6 +226,7 @@ int main ()
 
         // output r(t)
         ofstream fout(output_r_file_name);
+        fout.precision(10);
         for (int m = 0; m <= M; ++m)
             fout << tau * m << "   " << r[m] << endl;
     }  // if (mode)
