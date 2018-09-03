@@ -25,6 +25,7 @@ const Mode mode = MODE_GIVEN_Q;
 
 const char* output_r_file_name = "output_r.txt";
 const char* output_q_file_name = "output_q.txt";
+const char* output_log_file_name = "output_log.txt";
 
 // lengths of the space and time intervals
 const double L = 50;
@@ -82,7 +83,7 @@ const int M = 50;
 
 // parameters of the bisection method
 const double q_init_guess = 0.0;  // initial guess
-const double q_init_len = 0.1;  // initial length of the interval
+const double q_init_len = 0.08;  // initial length of the interval
 const double q_tol = 1e-5;  // tolerance
 
 double sign (double x)
@@ -221,7 +222,7 @@ int main ()
         // set the function q(t)
         // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
         vector<double> q(M + 1);
-        for (int m = 0; m <= M; ++m) {
+        for (int m = 1; m <= M; ++m) {
             double t = m * tau;
             q[m] = q_fun(t);
         }
@@ -259,6 +260,8 @@ int main ()
 
     // solve the inverse problem - find q(t) for given r(t)
 
+    ofstream flog(output_log_file_name);
+
     // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
     vector<double> q(M + 1);
 
@@ -280,25 +283,32 @@ int main ()
         // Assume that I(q) is a monotonically increasing function.
         // find q[m] = q as the solution of the equation I(q) = r[m]
 
+        flog << "m = " << m << endl;
         // find q_1 and q_2 such that I(q_1) < r[m] and I(q_2) > r[m]
         double q_1, q_2, len1, len2, I;
         len1 = len2 = q_init_len / 4;  // length of the interval
+        flog << "len1 =";
         do {
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
             len1 *= 2;
             q_1 = q_guess - len1;
             CalcSol(data, sol, q_1, tau);
             I = CalcIntegral(grid, sol[0]);
+            flog << "  " << len1;
         } while (I >= r[m]);
+        flog << "\nlen2 =";
         do {
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
             len2 *= 2;
             q_2 = q_guess + len2;
             CalcSol(data, sol, q_2, tau);
             I = CalcIntegral(grid, sol[0]);
+            flog << "  " << len2;
         } while (I <= r[m]);
+        flog << "\nq_1 = " << q_1 << "   q_2 = " << q_2 << endl;
 
         // apply the bisection method
+        flog << "q_guess =";
         while (q_2 - q_1 >= q_tol) {
             q_guess = (q_1 + q_2) / 2;
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
@@ -308,9 +318,11 @@ int main ()
                 q_1 = q_guess;
             else
                 q_2 = q_guess;
+            flog << "  " << q_guess;
         }
         q[m] = q_guess;
         copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
+        flog << "\n\n";
     }
 
     // output q(t)
