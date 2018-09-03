@@ -85,16 +85,21 @@ const double q_init_guess = 0.0;  // initial guess
 const double q_init_len = 0.1;  // initial length of the interval
 const double q_tol = 1e-5;  // tolerance
 
+double sign (double x)
+{
+    return (0 < x) - (x < 0);
+}
+
 // functions of the reaction terms and their derivatives
 
 double theta_theta (double u)
 {
-    return b * kappa_a * pow(u, 4);
+    return b * kappa_a * pow(u, 4) * sign(u);
 }
 
 double d_theta_theta (double u)
 {
-    return b * kappa_a * 4 * pow(u, 3);
+    return b * kappa_a * 4 * pow(fabs(u), 3);
 }
 
 double theta_phi (double u)
@@ -109,12 +114,12 @@ double d_theta_phi (double u)
 
 double phi_theta (double u)
 {
-    return - kappa_a * pow(u, 4);
+    return - kappa_a * pow(u, 4) * sign(u);
 }
 
 double d_phi_theta (double u)
 {
-    return - kappa_a * 4 * pow(u, 3);
+    return - kappa_a * 4 * pow(fabs(u), 3);
 }
 
 double phi_phi (double u)
