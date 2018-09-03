@@ -207,11 +207,10 @@ int main ()
     for (int i = 0; i < 2; ++i)
         data.c[i] = c[i] / tau;
 
-    vector<GridFunction1D> sol(2), sol_prev(2), sol_prev1(2);
+    vector<GridFunction1D> sol(2), sol_prev(2);
     for (int i = 0; i < 2; ++i) {
         sol[i].set_grid(grid);
         sol_prev[i].set_grid(grid);
-        sol_prev1[i].set_grid(grid);
     }
 
     // r[m] = r(t_m) = int_0^L g(x) theta(x,t_m) dx, m = 0, 1, ..., M
@@ -287,6 +286,29 @@ int main ()
         cout << "m = " << m << endl;
         // Denote by I(q) the value of the integral r(t_m) with q[m] = q.
         // Assume that I(q) is a monotonically increasing function.
+
+        if (verify_monotonicity) {
+            // verify monotonicity of the function I(q)
+            cout << "Verify monotonicity... ";
+            bool start = true;
+            double I_last;
+            for (double q = monot_ver_q_1; q <= monot_ver_q_2;
+                q += monot_ver_q_step)
+            {
+                copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
+                CalcSol(data, sol, q, tau);
+                double I = CalcIntegral(grid, sol[0]);
+                if (!start && I_last > I) {
+                    cout << "Monotonicity of I(q) is not fulfilled!!!\n";
+                    cout << "m = " << m << "   q = " << q << endl;
+                    throw;
+                }
+                start = false;
+                I_last = I;
+            }
+            cout << "OK" << endl;
+        }
+
         // find q[m] = q as the solution of the equation I(q) = r[m]
 
         flog << "m = " << m << endl;
@@ -327,31 +349,8 @@ int main ()
             flog << "  " << q_guess;
         }
         q[m] = q_guess;
-        if (verify_monotonicity)
-            copy_sol(grid, sol_prev, sol_prev1);  // copy sol_prev to sol_prev1
         copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
         flog << "\n\n";
-
-        if (verify_monotonicity) {
-            // verify monotonicity of the function I(q)
-            cout << "Verify monotonicity...\n";
-            bool start = true;
-            double I_last;
-            for (double q = monot_ver_q_1; q <= monot_ver_q_2;
-                q += monot_ver_q_step)
-            {
-                copy_sol(grid, sol_prev1, sol);  // copy sol_prev1 to sol
-                CalcSol(data, sol, q, tau);
-                double I = CalcIntegral(grid, sol[0]);
-                if (!start && I_last > I) {
-                    cout << "Monotonicity of I(q) is not fulfilled!!!\n";
-                    cout << "m = " << m << "   q = " << q;
-                    throw;
-                }
-                start = false;
-                I_last = I;
-            }
-        }
     }
 
     // output q(t)
