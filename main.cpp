@@ -74,17 +74,22 @@ double q_fun (double t)
 // the given function r(t) for the case of mode == MODE_GIVEN_R
 double r_fun (double t)
 {
-    return 1.0;
+    return 20.0 + 5 * (T - t) / T;
 }
-
-// numbers of nodes of the grids
-const int N = 50;
-const int M = 50;
 
 // parameters of the bisection method
 const double q_init_guess = 0.0;  // initial guess
 const double q_init_len = 0.08;  // initial length of the interval
 const double q_tol = 1e-5;  // tolerance
+
+// parameters of verification of monotonicity of the integral depending on q
+bool verify_monotonicity = true;
+// q is set from q_1 to q_2 with step q_step
+double monot_ver_q_1 = -10, monot_ver_q_2 = 10 + 1e-5, monot_ver_q_step = 0.1;
+
+// numbers of nodes of the grids
+const int N = 50;
+const int M = 50;
 
 double sign (double x)
 {
@@ -202,10 +207,11 @@ int main ()
     for (int i = 0; i < 2; ++i)
         data.c[i] = c[i] / tau;
 
-    vector<GridFunction1D> sol(2), sol_prev(2);
+    vector<GridFunction1D> sol(2), sol_prev(2), sol_prev1(2);
     for (int i = 0; i < 2; ++i) {
         sol[i].set_grid(grid);
         sol_prev[i].set_grid(grid);
+        sol_prev1[i].set_grid(grid);
     }
 
     // r[m] = r(t_m) = int_0^L g(x) theta(x,t_m) dx, m = 0, 1, ..., M
@@ -321,8 +327,31 @@ int main ()
             flog << "  " << q_guess;
         }
         q[m] = q_guess;
+        if (verify_monotonicity)
+            copy_sol(grid, sol_prev, sol_prev1);  // copy sol_prev to sol_prev1
         copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
         flog << "\n\n";
+
+        if (verify_monotonicity) {
+            // verify monotonicity of the function I(q)
+            cout << "Verify monotonicity...\n";
+            bool start = true;
+            double I_last;
+            for (double q = monot_ver_q_1; q <= monot_ver_q_2;
+                q += monot_ver_q_step)
+            {
+                copy_sol(grid, sol_prev1, sol);  // copy sol_prev1 to sol
+                CalcSol(data, sol, q, tau);
+                double I = CalcIntegral(grid, sol[0]);
+                if (!start && I_last > I) {
+                    cout << "Monotonicity of I(q) is not fulfilled!!!\n";
+                    cout << "m = " << m << "   q = " << q;
+                    throw;
+                }
+                start = false;
+                I_last = I;
+            }
+        }
     }
 
     // output q(t)
