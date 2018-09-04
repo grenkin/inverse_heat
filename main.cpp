@@ -26,6 +26,7 @@ const Mode mode = MODE_GIVEN_Q;
 const char* output_r_file_name = "output_r.txt";
 const char* output_q_file_name = "output_q.txt";
 const char* output_log_file_name = "output_log.txt";
+const char* output_monot_log_file_name = "output_monot_log.txt";
 
 // lengths of the space and time intervals
 const double L = 50;
@@ -173,7 +174,7 @@ double CalcIntegral (const Grid1D& grid, const GridFunction1D& theta)
 
 // sol1 and sol2 are vectors of size 2
 // copy sol1 to sol2
-void copy_sol(const Grid1D& grid,
+void copy_sol (const Grid1D& grid,
     const vector<GridFunction1D>& sol1, vector<GridFunction1D>& sol2)
 {
     for (int i = 0; i < 2; ++i) {
@@ -224,6 +225,8 @@ int main ()
     else {  // mode == MODE_GIVEN_Q
         // calculate r(t) for the given q(t)
 
+        cout << "Calculate r(t)..." << endl;
+
         // set the function q(t)
         // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
         vector<double> q(M + 1);
@@ -266,6 +269,11 @@ int main ()
     // solve the inverse problem - find q(t) for given r(t)
 
     ofstream flog(output_log_file_name);
+    ofstream flog_monot(output_monot_log_file_name);
+    flog_monot << "q" << endl;
+    for (double q = monot_ver_q_1; q <= monot_ver_q_2; q += monot_ver_q_step)
+        flog_monot << q << "  ";
+    flog_monot << "\n\n\nI(q)\n\n";
 
     // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
     vector<double> q(M + 1);
@@ -290,6 +298,7 @@ int main ()
         if (verify_monotonicity) {
             // verify monotonicity of the function I(q)
             cout << "Verify monotonicity... ";
+            flog_monot << "m = " << m << endl;
             bool start = true;
             double I_last;
             for (double q = monot_ver_q_1; q <= monot_ver_q_2;
@@ -305,8 +314,10 @@ int main ()
                 }
                 start = false;
                 I_last = I;
+                flog_monot << I << "  ";
             }
             cout << "OK" << endl;
+            flog_monot << "\n";
         }
 
         // find q[m] = q as the solution of the equation I(q) = r[m]
