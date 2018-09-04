@@ -15,13 +15,9 @@ Problem: find q(t) for given r(t) = int_0^L g(x) theta(x,t) dx
 #include <vector>
 #include <cmath>
 #include <joker-fdm/bvp1d.h>
+#include "input_data.h"
 
 using namespace std;
-
-// MODE_GIVEN_R - solve the inverse problem for given r(t)
-// MODE_GIVEN_Q - calculate r(t) for given q(t), then solve the inverse problem
-enum Mode {MODE_GIVEN_R, MODE_GIVEN_Q};
-const Mode mode = MODE_GIVEN_Q;
 
 const char* output_r_file_name = "output_r.txt";
 const char* output_q_file_name = "output_q.txt";
@@ -29,68 +25,20 @@ const char* output_log_file_name = "output_log.txt";
 const char* output_monot_log_file_name = "output_monot_log.txt";
 
 // lengths of the space and time intervals
-const double L = 50;
-const double T = 30;
+double L;
+double T;
 // coefficients in the equations and boundary conditions
-const double a = 0.92;
-const double alpha = 10.0/3;
-const double kappa_a = 0.01;
-const double b = 18.7;
-const double beta = 10;
-const double gamma = 0.3;
-const double theta_b1 = 0.3;
-const double theta_b2 = 0.8;
-
-// initial condition theta_0(x)
-double theta_0 (double x)
-{
-    const double theta_0_val = 1;
-    return theta_0_val;
-}
-
-// function f(x) in the source term
-double f (double x)
-{
-    if (x < L / 2)
-        return 1.0e-1;
-    else
-        return 0.0;
-}
-
-// function g(x) in the integral
-double g (double x)
-{
-    if (x > L / 2)
-        return 1.0;
-    else
-        return 0.0;
-}
-
-// the given function q(t) in the source term for the case of mode == MODE_GIVEN_Q
-double q_fun (double t)
-{
-    return (T - t) / T;
-}
-
-// the given function r(t) for the case of mode == MODE_GIVEN_R
-double r_fun (double t)
-{
-    return 20.0 + 5 * (T - t) / T;
-}
-
-// parameters of the bisection method
-const double q_init_guess = 0.0;  // initial guess
-const double q_init_len = 0.08;  // initial length of the interval
-const double q_tol = 1e-5;  // tolerance
-
-// parameters of verification of monotonicity of the integral depending on q
-bool verify_monotonicity = true;
-// q is set from q_1 to q_2 with step q_step
-double monot_ver_q_1 = -10, monot_ver_q_2 = 10 + 1e-5, monot_ver_q_step = 0.1;
-
+double a;
+double alpha;
+double kappa_a;
+double b;
+double beta;
+double gamma;
+double theta_b1;
+double theta_b2;
 // numbers of nodes of the grids
-const int N = 50;
-const int M = 50;
+int N;
+int M;
 
 double sign (double x)
 {
@@ -145,26 +93,27 @@ double d_phi_phi (double u)
 //   finally sol contains the solution at the current time step m
 // q is the value of q(t) at the time interval (t_{m-1}, t_m)
 // tau is the time grid step
-void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q, double tau)
+void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q,
+    const InputData& id)
 {
     int N = data.grid.K[0];
+    double tau = id.T / id.M;
     for (int n = 0; n <= N; ++n) {
-        double x = data.grid.coord(0, n);
-        data.g[0](0, n) = q * f(x) + 1. / tau * sol[0](0, n);
+        data.g[0](0, n) = q * id.f[n] + 1. / tau * sol[0](0, n);
         data.g[1](0, n) = 0.0;
     }
     SolveBVP1D(data, Parameters1D(), sol);
 }
 
 // calculate int_0^L g(x) theta(x) dx
-double CalcIntegral (const Grid1D& grid, const GridFunction1D& theta)
+double CalcIntegral (const Grid1D& grid, const GridFunction1D& theta,
+    const InputData& id)
 {
     // trapezoid method
     double s = 0.0;
     for (int n = 0; n <= N; ++n) {
-        double x = grid.coord(0, n);
         double theta_val = theta(0, n);
-        double term = g(x) * theta_val;
+        double term = id.g[n] * theta_val;
         if (n == 0 || n == N)
             term /= 2;
         s += term;
@@ -185,6 +134,20 @@ void copy_sol (const Grid1D& grid,
 
 int main ()
 {
+    InputData id;
+    L = id.L;
+    T = id.T;
+    a = id.a;
+    alpha = id.alpha;
+    kappa_a = id.kappa_a;
+    b = id.b;
+    beta = id.beta;
+    gamma = id.gamma;
+    theta_b1 = id.theta_b1;
+    theta_b2 = id.theta_b2;
+    N = id.N;
+    M = id.M;
+
     vector<double> Lvec(1);  Lvec[0] = L;
     vector<int> Nvec(1);  Nvec[0] = N;
     Grid1D grid(Lvec, Nvec);
@@ -216,11 +179,9 @@ int main ()
 
     // r[m] = r(t_m) = int_0^L g(x) theta(x,t_m) dx, m = 0, 1, ..., M
     vector<double> r(M + 1);
-    if (mode == MODE_GIVEN_R) {
-        for (int m = 0; m <= M; ++m) {
-            double t = m * tau;
-            r[m] = r_fun(t);
-        }
+    if (id.mode == MODE_GIVEN_R) {
+        for (int m = 0; m <= M; ++m)
+            r[m] = id.r[m];
     }
     else {  // mode == MODE_GIVEN_Q
         // calculate r(t) for the given q(t)
@@ -230,18 +191,14 @@ int main ()
         // set the function q(t)
         // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
         vector<double> q(M + 1);
-        for (int m = 1; m <= M; ++m) {
-            double t = m * tau;
-            q[m] = q_fun(t);
-        }
+        for (int m = 1; m <= M; ++m)
+            q[m] = id.q[m];
 
         // set the initial condition
         {
             int i = 0;
-            for (int n = 0; n <= N; ++n) {
-                double x = grid.coord(0, n);
-                sol[i](0, n) = theta_0(x);
-            }
+            for (int n = 0; n <= N; ++n)
+                sol[i](0, n) = id.theta_0[n];
             // The solution for i = 1 (phi) is undefined.
             // The stationary equation for phi has to be solved
             //   in order to calculate phi at t = 0.
@@ -249,13 +206,13 @@ int main ()
 
         // solve the nonstationary problem and calculate r(t)
         // now sol[0] contains the initial function theta_0 and sol[1] is undefined
-        r[0] = CalcIntegral(grid, sol[0]);
+        r[0] = CalcIntegral(grid, sol[0], id);
         for (int m = 1; m <= M; ++m) {
             // now sol contains the solution at the previous time step
-            CalcSol(data, sol, q[m], tau);
+            CalcSol(data, sol, q[m], id);
             // now sol contains the solution at the current time step
             // calculate r(t_m) = int_0^L g(x) theta(x,t_m) dx
-            r[m] = CalcIntegral(grid, sol[0]);
+            r[m] = CalcIntegral(grid, sol[0], id);
         }
 
         // output r(t)
@@ -271,8 +228,11 @@ int main ()
     ofstream flog(output_log_file_name);
     ofstream flog_monot(output_monot_log_file_name);
     flog_monot << "q" << endl;
-    for (double q = monot_ver_q_1; q <= monot_ver_q_2; q += monot_ver_q_step)
+    for (double q = id.monot_ver_q_1; q <= id.monot_ver_q_2;
+        q += id.monot_ver_q_step)
+    {
         flog_monot << q << "  ";
+    }
     flog_monot << "\n\n\nI(q)\n\n";
 
     // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
@@ -282,31 +242,29 @@ int main ()
     // set the initial condition
     {
         int i = 0;
-        for (int n = 0; n <= N; ++n) {
-            double x = grid.coord(0, n);
-            sol_prev[i](0, n) = theta_0(x);
-        }
+        for (int n = 0; n <= N; ++n)
+            sol_prev[i](0, n) = id.theta_0[n];
         // sol_prev[1] (phi) is undefined
     }
 
-    double q_guess = q_init_guess;
+    double q_guess = id.q_init_guess;
     for (int m = 1; m <= M; ++m) {
         cout << "m = " << m << endl;
         // Denote by I(q) the value of the integral r(t_m) with q[m] = q.
         // Assume that I(q) is a monotonically increasing function.
 
-        if (verify_monotonicity) {
+        if (id.verify_monotonicity) {
             // verify monotonicity of the function I(q)
             cout << "Verify monotonicity... ";
             flog_monot << "m = " << m << endl;
             bool start = true;
             double I_last;
-            for (double q = monot_ver_q_1; q <= monot_ver_q_2;
-                q += monot_ver_q_step)
+            for (double q = id.monot_ver_q_1; q <= id.monot_ver_q_2;
+                q += id.monot_ver_q_step)
             {
                 copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
-                CalcSol(data, sol, q, tau);
-                double I = CalcIntegral(grid, sol[0]);
+                CalcSol(data, sol, q, id);
+                double I = CalcIntegral(grid, sol[0], id);
                 if (!start && I_last > I) {
                     cout << "Monotonicity of I(q) is not fulfilled!!!\n";
                     cout << "m = " << m << "   q = " << q << endl;
@@ -325,14 +283,14 @@ int main ()
         flog << "m = " << m << endl;
         // find q_1 and q_2 such that I(q_1) < r[m] and I(q_2) > r[m]
         double q_1, q_2, len1, len2, I;
-        len1 = len2 = q_init_len / 4;  // length of the interval
+        len1 = len2 = id.q_init_len / 4;  // length of the interval
         flog << "len1 =";
         do {
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
             len1 *= 2;
             q_1 = q_guess - len1;
-            CalcSol(data, sol, q_1, tau);
-            I = CalcIntegral(grid, sol[0]);
+            CalcSol(data, sol, q_1, id);
+            I = CalcIntegral(grid, sol[0], id);
             flog << "  " << len1;
         } while (I >= r[m]);
         flog << "\nlen2 =";
@@ -340,19 +298,19 @@ int main ()
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
             len2 *= 2;
             q_2 = q_guess + len2;
-            CalcSol(data, sol, q_2, tau);
-            I = CalcIntegral(grid, sol[0]);
+            CalcSol(data, sol, q_2, id);
+            I = CalcIntegral(grid, sol[0], id);
             flog << "  " << len2;
         } while (I <= r[m]);
         flog << "\nq_1 = " << q_1 << "   q_2 = " << q_2 << endl;
 
         // apply the bisection method
         flog << "q_guess =";
-        while (q_2 - q_1 >= q_tol) {
+        while (q_2 - q_1 >= id.q_tol) {
             q_guess = (q_1 + q_2) / 2;
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
-            CalcSol(data, sol, q_guess, tau);
-            I = CalcIntegral(grid, sol[0]);
+            CalcSol(data, sol, q_guess, id);
+            I = CalcIntegral(grid, sol[0], id);
             if (I < r[m])
                 q_1 = q_guess;
             else
