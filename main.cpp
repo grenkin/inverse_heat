@@ -19,6 +19,7 @@ Problem: find q(t) for given r(t) = int_0^L g(x) theta(x,t) dx
 
 using namespace std;
 
+const char* input_file_name = "input.txt";
 const char* output_r_file_name = "output_r.txt";
 const char* output_q_file_name = "output_q.txt";
 const char* output_log_file_name = "output_log.txt";
@@ -134,7 +135,7 @@ void copy_sol (const Grid1D& grid,
 
 int main ()
 {
-    InputData id;
+    InputData id(input_file_name);
     L = id.L;
     T = id.T;
     a = id.a;

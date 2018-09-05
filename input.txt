@@ -1,0 +1,37 @@
+L = 50
+T = 30
+
+a = 0.92
+alpha = 3.333333333333
+kappa_a = 0.01
+b = 18.7
+beta = 10
+gamma = 0.3
+theta_b1 = 0.3
+theta_b2 = 0.8
+
+theta_0_fun_cmd = fun\const
+theta_0_fun_arg = 1
+f_fun_cmd = fun\const_zero
+f_fun_arg = 0 24.99 0.1
+g_fun_cmd = fun\const_zero
+g_fun_arg = 25.01 50 1
+
+mode = given_q
+q_fun_cmd = fun\linear 
+q_fun_arg = 1 0
+
+r_fun_cmd = fun\linear
+r_fun_arg = 25 20
+
+q_init_guess = 0.0
+q_init_len = 0.08
+q_tol = 1e-5
+
+verify_monotonicity = on
+monot_ver_q_1 = -10
+monot_ver_q_2 = 10
+monot_ver_q_step = 0.1
+
+N = 50
+M = 50

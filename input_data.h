@@ -38,7 +38,7 @@ struct InputData {
     // numbers of nodes of the grids: n = 0, ..., N - space, m = 0, ..., M - time
     int N, M;
 
-    InputData ();
+    InputData (std::string);
 };
 
 #endif // INPUT_DATA_H_INCLUDED
