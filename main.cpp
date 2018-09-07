@@ -14,6 +14,7 @@ Problem: find q(t) for given r(t) = int_0^L g(x) theta(x,t) dx
 #include <fstream>
 #include <vector>
 #include <cmath>
+#include <conio.h>
 #include <joker-fdm/bvp1d.h>
 #include "input_data.h"
 
@@ -249,6 +250,7 @@ int main ()
     }
 
     double q_guess = id.q_init_guess;
+    double q_len = id.q_init_len / 4;
     for (int m = 1; m <= M; ++m) {
         cout << "m = " << m << endl;
         // Denote by I(q) the value of the integral r(t_m) with q[m] = q.
@@ -282,9 +284,11 @@ int main ()
         // find q[m] = q as the solution of the equation I(q) = r[m]
 
         flog << "m = " << m << endl;
+        // now q_guess contains q(t) from the previous time step
+        double q_guess_old = q_guess;
         // find q_1 and q_2 such that I(q_1) < r[m] and I(q_2) > r[m]
         double q_1, q_2, len1, len2, I;
-        len1 = len2 = id.q_init_len / 4;  // length of the interval
+        len1 = len2 = q_len;  // length of the interval
         flog << "len1 =";
         do {
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
@@ -321,6 +325,8 @@ int main ()
         q[m] = q_guess;
         copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
         flog << "\n\n";
+        // now q_guess contains q(t) at the current time step
+        q_len = fabs(q_guess - q_guess_old);
     }
 
     // output q(t)
@@ -329,5 +335,7 @@ int main ()
     for (int m = 1; m <= M; ++m)
         fout << tau * m << "   " << q[m] << endl;
 
+    cout << "Done";
+    getch();
     return 0;
 }
