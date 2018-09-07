@@ -14,6 +14,7 @@ Problem: find q(t) for given r(t) = int_0^L g(x) theta(x,t) dx
 #include <fstream>
 #include <vector>
 #include <cmath>
+#include <cstdlib>
 #include <conio.h>
 #include <joker-fdm/bvp1d.h>
 #include "input_data.h"
@@ -259,6 +260,7 @@ int main ()
         if (id.verify_monotonicity) {
             // verify monotonicity of the function I(q)
             cout << "Verify monotonicity... ";
+            bool monotone = true;
             flog_monot << "m = " << m << endl;
             bool start = true;
             double I_last;
@@ -268,14 +270,19 @@ int main ()
                 copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
                 CalcSol(data, sol, q, id);
                 double I = CalcIntegral(grid, sol[0], id);
-                if (!start && I_last > I) {
+                if (monotone && !start && I_last > I) {
                     cout << "Monotonicity of I(q) is not fulfilled!!!\n";
-                    cout << "m = " << m << "   q = " << q << endl;
-                    throw;
+                    cout << "q = " << q << endl;
+                    monotone = false;
                 }
                 start = false;
                 I_last = I;
                 flog_monot << I << "  ";
+            }
+            if (!monotone) {
+                getch();
+                flog_monot.close();
+                exit(1);
             }
             cout << "OK" << endl;
             flog_monot << "\n";
