@@ -7,6 +7,10 @@ using namespace std;
 
 int main (int argc, char **argv)
 {
+    if (argc != 5) {
+        cerr << "Wrong arguments!" << endl;
+        exit(1);
+    }
     double len = atof(argv[1]);
     int num = atoi(argv[2]);
     double val1 = atof(argv[3]);

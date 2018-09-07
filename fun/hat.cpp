@@ -1,4 +1,4 @@
-// Usage: const_zero len num x1 x2 val
+// Usage: hat len num x1 x2 val
 
 #include <iostream>
 #include <cstdlib>
@@ -17,14 +17,18 @@ int main (int argc, char **argv)
     double x2 = atof(argv[4]);
     double val = atof(argv[5]);
 
+    double x_mid = (x1 + x2) / 2;
     double h = len / num;
     for (int i = 0; i <= num; ++i) {
         double x = h * i;
-        if (x >= x1 && x <= x2)
-            cout << val;
+        double y;
+        if (x < x1 || x > x2)
+            y = 0.0;
+        else if (x < x_mid)
+            y = val * (x - x1) / (x_mid - x1);
         else
-            cout << 0.0;
-        cout << " ";
+            y = val * (x - x2) / (x_mid - x2);
+        cout << y << " ";
     }
 
     return 0;
