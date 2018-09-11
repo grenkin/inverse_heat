@@ -105,7 +105,10 @@ void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q,
         data.g[0](0, n) = q * id.f[n] + 1. / tau * sol[0](0, n);
         data.g[1](0, n) = 0.0;
     }
-    SolveBVP1D(data, Parameters1D(), sol);
+    Parameters1D param;
+    param.sol_method = SOL_METHOD_UMFPACK;
+    param.Newton_tol = 1e-10;
+    SolveBVP1D(data, param, sol);
 }
 
 // calculate int_0^L g(x) theta(x) dx
@@ -230,6 +233,7 @@ int main ()
 
     ofstream flog(output_log_file_name);
     ofstream flog_monot(output_monot_log_file_name);
+    flog_monot.precision(10);
     flog_monot << "q" << endl;
     for (double q = id.monot_ver_q_1; q <= id.monot_ver_q_2;
         q += id.monot_ver_q_step)
@@ -280,11 +284,12 @@ int main ()
                 flog_monot << I << "  ";
             }
             if (!monotone) {
-                getch();
-                flog_monot.close();
-                exit(1);
+                // getch();
+                // flog_monot.close();
+                // exit(1);
             }
-            cout << "OK" << endl;
+            else
+                cout << "OK" << endl;
             flog_monot << "\n";
         }
 
