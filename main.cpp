@@ -106,8 +106,12 @@ void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q,
         data.g[1](0, n) = 0.0;
     }
     Parameters1D param;
-    param.sol_method = SOL_METHOD_UMFPACK;
-    param.Newton_tol = 1e-10;
+    param.sol_method = id.linear_sys_sol_method;
+    param.Newton_tol = id.Newton_tol;
+    if (id.linear_sys_sol_method == SOL_METHOD_MTL) {
+        param.linear_sys_tol = id.linear_sys_tol;
+        param.max_linear_sys_iterations = 1000000;
+    }
     SolveBVP1D(data, param, sol);
 }
 

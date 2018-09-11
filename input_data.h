@@ -2,6 +2,7 @@
 #define INPUT_DATA_H_INCLUDED
 
 #include <vector>
+#include <joker-fdm/bvp1d.h>
 
 // MODE_GIVEN_R - solve the inverse problem for given r(t)
 // MODE_GIVEN_Q - calculate r(t) for given q(t), then solve the inverse problem
@@ -37,6 +38,10 @@ struct InputData {
     double monot_ver_q_1, monot_ver_q_2, monot_ver_q_step;
     // numbers of nodes of the grids: n = 0, ..., N - space, m = 0, ..., M - time
     int N, M;
+    // linear system solution method
+    SolutionMethod linear_sys_sol_method;
+    double Newton_tol;  // tolerance in Newton's method
+    double linear_sys_tol;  // tolerance in the linear system solution method
 
     InputData (std::string);
 };

@@ -138,6 +138,11 @@ InputData::InputData (string input_file_name)
             ("q_fun_arg", po::value<string>(), "Arguments of q")
             ("r_fun_cmd", po::value<string>(), "Command r")
             ("r_fun_arg", po::value<string>(), "Arguments of r")
+            ("linear_sys_sol_method", po::value<string>(),
+                "Linear system solution method (m - MTL or u - UMFPACK)")
+            ("Newton_tol", po::value<double>(), "Tolerance in Newton's method")
+            ("linear_sys_tol", po::value<double>(),
+                "Tolerance in the linear system solution method")
         ;
         po::variables_map vm;
         ifstream ifs(input_file_name.c_str());
@@ -207,6 +212,18 @@ InputData::InputData (string input_file_name)
             get_string_param(vm, "r_fun_arg", r_fun_arg);
             calc_fun(r_fun_cmd, r_fun_arg, T, M, r);
         }
+        get_pos_double_param(vm, "Newton_tol", Newton_tol);
+        get_string_param(vm, "linear_sys_sol_method", s);
+        if (s == "m")
+            linear_sys_sol_method = SOL_METHOD_MTL;
+        else if (s == "u")
+            linear_sys_sol_method = SOL_METHOD_UMFPACK;
+        else {
+            print_error(
+                "linear_sys_sol_method doesn't equal either m or u");
+        }
+        if (linear_sys_sol_method == SOL_METHOD_MTL)
+            get_pos_double_param(vm, "linear_sys_tol", linear_sys_tol);
     }
     catch (ParamIsNotSet e) {
         print_error("Parameter \"" + e.param + "\" is not specified");
