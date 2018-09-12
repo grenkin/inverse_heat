@@ -142,6 +142,12 @@ void copy_sol (const Grid1D& grid,
     }
 }
 
+void write_progress (int m, int M)
+{
+    if (100 * m / M > 100 * (m - 1) / M)
+        cout << 100 * m / M << "% ";
+}
+
 int main ()
 {
     InputData id(input_file_name);
@@ -196,7 +202,7 @@ int main ()
     else {  // mode == MODE_GIVEN_Q
         // calculate r(t) for the given q(t)
 
-        cout << "Calculate r(t)..." << endl;
+        cout << "Calculate r(t)... ";
 
         // set the function q(t)
         // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
@@ -223,6 +229,7 @@ int main ()
             // now sol contains the solution at the current time step
             // calculate r(t_m) = int_0^L g(x) theta(x,t_m) dx
             r[m] = CalcIntegral(grid, sol[0], id);
+            write_progress(m, M);
         }
 
         // output r(t)
@@ -230,6 +237,8 @@ int main ()
         fout.precision(10);
         for (int m = 0; m <= M; ++m)
             fout << tau * m << "   " << r[m] << endl;
+
+        cout << endl;
     }  // if (mode)
     // r[m], m = 0, 1, ..., M, are calculated
 
