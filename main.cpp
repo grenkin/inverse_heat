@@ -313,6 +313,7 @@ int main ()
         // find q[m] = q as the solution of the equation I(q) = r[m]
 
         flog << "m = " << m << endl;
+        flog << "r = " << r[m] << endl;
         // now q_guess contains q(t) from the previous time step
         double q_guess_old = q_guess;
         // find q_1 and q_2 such that I(q_1) < r[m] and I(q_2) > r[m]
