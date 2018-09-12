@@ -281,6 +281,7 @@ int main ()
             flog_monot << "m = " << m << endl;
             bool start = true;
             double I_last;
+            double q_bad;
             for (double q = id.monot_ver_q_1; q <= id.monot_ver_q_2;
                 q += id.monot_ver_q_step)
             {
@@ -288,22 +289,25 @@ int main ()
                 CalcSol(data, sol, q, id);
                 double I = CalcIntegral(grid, sol[0], id);
                 if (monotone && !start && I_last > I) {
-                    cout << "Monotonicity of I(q) is not fulfilled!!!\n";
-                    cout << "q = " << q << endl;
                     monotone = false;
+                    q_bad = q;
                 }
                 start = false;
                 I_last = I;
                 flog_monot << I << "  ";
             }
+            flog_monot << "\n";
             if (!monotone) {
+                cout << "Monotonicity of I(q) is not fulfilled!!!\n"
+                    << "q = " << q_bad << endl;
+                flog_monot << "Monotonicity of I(q) is not fulfilled!!!\n"
+                    << "q = " << q_bad << endl;
                 // getch();
                 // flog_monot.close();
                 // exit(1);
             }
             else
                 cout << "OK" << endl;
-            flog_monot << "\n";
         }
 
         // find q[m] = q as the solution of the equation I(q) = r[m]
@@ -321,7 +325,7 @@ int main ()
             q_1 = q_guess - len1;
             CalcSol(data, sol, q_1, id);
             I = CalcIntegral(grid, sol[0], id);
-            flog << "  " << len1;
+            flog << "  " << len1 << " (I = " << I << ")";
         } while (I >= r[m]);
         flog << "\nlen2 =";
         do {
@@ -330,7 +334,7 @@ int main ()
             q_2 = q_guess + len2;
             CalcSol(data, sol, q_2, id);
             I = CalcIntegral(grid, sol[0], id);
-            flog << "  " << len2;
+            flog << "  " << len2 << " (I = " << I << ")";
         } while (I <= r[m]);
         flog << "\nq_1 = " << q_1 << "   q_2 = " << q_2 << endl;
 
