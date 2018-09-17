@@ -356,7 +356,7 @@ int main ()
         copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
         flog << "\n\n";
         // now q_guess contains q(t) at the current time step
-        q_len = fabs(q_guess - q_guess_old);
+        q_len = fmax(fabs(q_guess - q_guess_old), id.q_tol);
     }
 
     // output q(t)
