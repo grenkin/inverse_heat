@@ -26,6 +26,7 @@ const char* output_r_file_name = "output_r.txt";
 const char* output_q_file_name = "output_q.txt";
 const char* output_log_file_name = "output_log.txt";
 const char* output_monot_log_file_name = "output_monot_log.txt";
+const char* output_theta_file_name = "output_theta.txt";
 
 // lengths of the space and time intervals
 double L;
@@ -254,6 +255,16 @@ int main ()
         flog_monot << q << "  ";
     }
     flog_monot << "\n\n\nI(q)\n\n";
+    ofstream ftheta(output_theta_file_name);
+    ftheta.precision(10);
+    ftheta << "x" << endl;
+    for (int n = 0; n <= N; ++n)
+        ftheta << grid.coord(0, n) << "  ";
+    ftheta << "\n\n\ntheta(x, t_m)\n\n";
+    ftheta << "m = 0" << endl;
+    for (int n = 0; n <= N; ++n)
+        ftheta << id.theta_0[n] << "  ";
+    ftheta << "\n";
 
     // q(t) = q[m], t in (t_{m-1}, t_m), m = 1, 2, ..., M
     vector<double> q(M + 1);
@@ -357,6 +368,11 @@ int main ()
         flog << "\n\n";
         // now q_guess contains q(t) at the current time step
         q_len = fmax(fabs(q_guess - q_guess_old), id.q_tol);
+        // output theta
+        ftheta << "m = " << m << endl;
+        for (int n = 0; n <= N; ++n)
+            ftheta << sol[0](0, n) << "  ";
+        ftheta << "\n";
     }
 
     // output q(t)
