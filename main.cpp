@@ -98,10 +98,13 @@ double d_phi_phi (double u)
 // q is the value of q(t) at the time interval (t_{m-1}, t_m)
 // tau is the time grid step
 void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q,
-    const InputData& id)
+    double tau, const InputData& id)
 {
     int N = data.grid.K[0];
-    double tau = id.T / id.M;
+    vector<double> c(2);
+    c[0] = 1.0;  c[1] = 0.0;
+    for (int i = 0; i < 2; ++i)
+        data.c[i] = c[i] / tau;
     for (int n = 0; n <= N; ++n) {
         data.g[0](0, n) = q * id.f[n] + 1. / tau * sol[0](0, n);
         data.g[1](0, n) = 0.0;
@@ -183,11 +186,6 @@ int main ()
 
     double tau = T / M;
 
-    vector<double> c(2);
-    c[0] = 1.0;  c[1] = 0.0;
-    for (int i = 0; i < 2; ++i)
-        data.c[i] = c[i] / tau;
-
     vector<GridFunction1D> sol(2), sol_prev(2);
     for (int i = 0; i < 2; ++i) {
         sol[i].set_grid(grid);
@@ -226,7 +224,7 @@ int main ()
         r[0] = CalcIntegral(grid, sol[0], id);
         for (int m = 1; m <= M; ++m) {
             // now sol contains the solution at the previous time step
-            CalcSol(data, sol, q[m], id);
+            CalcSol(data, sol, q[m], tau, id);
             // now sol contains the solution at the current time step
             // calculate r(t_m) = int_0^L g(x) theta(x,t_m) dx
             r[m] = CalcIntegral(grid, sol[0], id);
@@ -248,13 +246,15 @@ int main ()
     ofstream flog(output_log_file_name);
     ofstream flog_monot(output_monot_log_file_name);
     flog_monot.precision(10);
-    flog_monot << "q" << endl;
-    for (double q = id.monot_ver_q_1; q <= id.monot_ver_q_2;
-        q += id.monot_ver_q_step)
-    {
-        flog_monot << q << "  ";
+    if (id.verify_monotonicity) {
+        flog_monot << "q" << endl;
+        for (double q = id.monot_ver_q_1; q <= id.monot_ver_q_2;
+            q += id.monot_ver_q_step)
+        {
+            flog_monot << q << "  ";
+        }
+        flog_monot << "\n\n\nI(q)\n\n";
     }
-    flog_monot << "\n\n\nI(q)\n\n";
     ofstream ftheta(output_theta_file_name);
     ftheta.precision(10);
     ftheta << "x" << endl;
@@ -297,7 +297,7 @@ int main ()
                 q += id.monot_ver_q_step)
             {
                 copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
-                CalcSol(data, sol, q, id);
+                CalcSol(data, sol, q, tau, id);
                 double I = CalcIntegral(grid, sol[0], id);
                 if (monotone && !start && I_last > I) {
                     monotone = false;
@@ -335,7 +335,7 @@ int main ()
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
             len1 *= 2;
             q_1 = q_guess - len1;
-            CalcSol(data, sol, q_1, id);
+            CalcSol(data, sol, q_1, tau, id);
             I = CalcIntegral(grid, sol[0], id);
             flog << "  " << len1 << " (I = " << I << ")";
         } while (I >= r[m]);
@@ -344,7 +344,7 @@ int main ()
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
             len2 *= 2;
             q_2 = q_guess + len2;
-            CalcSol(data, sol, q_2, id);
+            CalcSol(data, sol, q_2, tau, id);
             I = CalcIntegral(grid, sol[0], id);
             flog << "  " << len2 << " (I = " << I << ")";
         } while (I <= r[m]);
@@ -355,7 +355,7 @@ int main ()
         while (q_2 - q_1 >= id.q_tol) {
             q_guess = (q_1 + q_2) / 2;
             copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
-            CalcSol(data, sol, q_guess, id);
+            CalcSol(data, sol, q_guess, tau, id);
             I = CalcIntegral(grid, sol[0], id);
             if (I < r[m])
                 q_1 = q_guess;
