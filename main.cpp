@@ -146,6 +146,56 @@ void copy_sol (const Grid1D& grid,
     }
 }
 
+// solve the equation I(q) = r
+// sol_prev and sol are vectors of size 2:
+//   sol_prev contains the solution at the previous time step
+//   sol will contain the calculated solution at the current time step
+// q_guess is the initial guess for the bisection method
+// q_len is the initial interval length in the bisection method
+double Find_q (Data1D& data, const vector<GridFunction1D>& sol_prev,
+    vector<GridFunction1D>& sol, double q_guess, double q_len, double r,
+    double tau, const InputData& id, ofstream& flog)
+{
+    // find q_1 and q_2 such that I(q_1) < r and I(q_2) > r
+    double q_1, q_2, len1, len2, I;
+    len1 = len2 = q_len / 2;  // length of the interval
+    flog << "len1 =";
+    do {
+        copy_sol(data.grid, sol_prev, sol);  // copy sol_prev to sol
+        len1 *= 2;
+        q_1 = q_guess - len1;
+        CalcSol(data, sol, q_1, tau, id);
+        I = CalcIntegral(data.grid, sol[0], id);
+        flog << "  " << len1 << " (I = " << I << ")";
+    } while (I >= r);
+    flog << "\nlen2 =";
+    do {
+        copy_sol(data.grid, sol_prev, sol);  // copy sol_prev to sol
+        len2 *= 2;
+        q_2 = q_guess + len2;
+        CalcSol(data, sol, q_2, tau, id);
+        I = CalcIntegral(data.grid, sol[0], id);
+        flog << "  " << len2 << " (I = " << I << ")";
+    } while (I <= r);
+    flog << "\nq_1 = " << q_1 << "   q_2 = " << q_2 << endl;
+
+    // apply the bisection method
+    flog << "q_guess =";
+    while (q_2 - q_1 >= id.q_tol) {
+        q_guess = (q_1 + q_2) / 2;
+        copy_sol(data.grid, sol_prev, sol);  // copy sol_prev to sol
+        CalcSol(data, sol, q_guess, tau, id);
+        I = CalcIntegral(data.grid, sol[0], id);
+        if (I < r)
+            q_1 = q_guess;
+        else
+            q_2 = q_guess;
+        flog << "  " << q_guess;
+    }
+
+    return q_guess;
+}
+
 void write_progress (int m, int M)
 {
     if (100 * m / M > 100 * (m - 1) / M)
@@ -279,7 +329,7 @@ int main ()
     }
 
     double q_guess = id.q_init_guess;
-    double q_len = id.q_init_len / 4;
+    double q_len = id.q_init_len / 2;
     for (int m = 1; m <= M; ++m) {
         cout << "m = " << m << endl;
         // Denote by I(q) the value of the integral r(t_m) with q[m] = q.
@@ -326,48 +376,17 @@ int main ()
         flog << "m = " << m << endl;
         flog << "r = " << r[m] << endl;
         // now q_guess contains q(t) from the previous time step
-        double q_guess_old = q_guess;
-        // find q_1 and q_2 such that I(q_1) < r[m] and I(q_2) > r[m]
-        double q_1, q_2, len1, len2, I;
-        len1 = len2 = q_len;  // length of the interval
-        flog << "len1 =";
-        do {
-            copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
-            len1 *= 2;
-            q_1 = q_guess - len1;
-            CalcSol(data, sol, q_1, tau, id);
-            I = CalcIntegral(grid, sol[0], id);
-            flog << "  " << len1 << " (I = " << I << ")";
-        } while (I >= r[m]);
-        flog << "\nlen2 =";
-        do {
-            copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
-            len2 *= 2;
-            q_2 = q_guess + len2;
-            CalcSol(data, sol, q_2, tau, id);
-            I = CalcIntegral(grid, sol[0], id);
-            flog << "  " << len2 << " (I = " << I << ")";
-        } while (I <= r[m]);
-        flog << "\nq_1 = " << q_1 << "   q_2 = " << q_2 << endl;
+        // and sol_prev contains the solution at the previous time step
+        double q_guess_new = Find_q(data, sol_prev, sol, q_guess, q_len, r[m],
+            tau, id, flog);
+        // now sol contains the solution at the current time step
+        q[m] = q_guess_new;
 
-        // apply the bisection method
-        flog << "q_guess =";
-        while (q_2 - q_1 >= id.q_tol) {
-            q_guess = (q_1 + q_2) / 2;
-            copy_sol(grid, sol_prev, sol);  // copy sol_prev to sol
-            CalcSol(data, sol, q_guess, tau, id);
-            I = CalcIntegral(grid, sol[0], id);
-            if (I < r[m])
-                q_1 = q_guess;
-            else
-                q_2 = q_guess;
-            flog << "  " << q_guess;
-        }
-        q[m] = q_guess;
+        q_len = fmax(2 * fabs(q_guess_new - q_guess), id.q_tol);
+        q_guess = q_guess_new;
         copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
         flog << "\n\n";
-        // now q_guess contains q(t) at the current time step
-        q_len = fmax(fabs(q_guess - q_guess_old), id.q_tol);
+
         // output theta
         ftheta << "m = " << m << endl;
         for (int n = 0; n <= N; ++n)
