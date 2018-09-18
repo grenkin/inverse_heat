@@ -373,19 +373,44 @@ int main ()
 
         // find q[m] = q as the solution of the equation I(q) = r[m]
 
-        flog << "m = " << m << endl;
-        flog << "r = " << r[m] << endl;
-        // now q_guess contains q(t) from the previous time step
-        // and sol_prev contains the solution at the previous time step
-        double q_guess_new = Find_q(data, sol_prev, sol, q_guess, q_len, r[m],
-            tau, id, flog);
-        // now sol contains the solution at the current time step
-        q[m] = q_guess_new;
+        if (m > id.divided_start_steps) {
+            flog << "m = " << m << endl;
+            flog << "r = " << r[m] << endl;
+            // now q_guess contains q(t) from the previous time step
+            // and sol_prev contains the solution at the previous time step
+            double q_guess_new = Find_q(data, sol_prev, sol, q_guess, q_len,
+                r[m], tau, id, flog);
+            // now sol contains the solution at the current time step
+            q[m] = q_guess_new;
 
-        q_len = fmax(2 * fabs(q_guess_new - q_guess), id.q_tol);
-        q_guess = q_guess_new;
-        copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
-        flog << "\n\n";
+            q_len = fmax(2 * fabs(q_guess_new - q_guess), id.q_tol);
+            q_guess = q_guess_new;
+            copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
+            flog << "\n\n";
+        }
+        else {  // id.divided_start_steps > 0
+            // divide id.divided_start_steps first time steps
+            //   by id.start_substeps parts
+            int M1 = id.start_substeps;
+            double tau1 = tau / M1;
+            for (int m1 = 1; m1 <= M1; ++m1) {
+                flog << "m = " << m << "  m1 = " << m1 << endl;
+                double r1 = r[m - 1] + m1 * tau1 / tau * (r[m] - r[m - 1]);
+                flog << "r = " << r1 << endl;
+                // now q_guess contains q(t) from the previous time substep
+                // and sol_prev contains the solution at the previous time substep
+                double q_guess_new = Find_q(data, sol_prev, sol, q_guess, q_len,
+                    r1, tau1, id, flog);
+                // now sol contains the solution at the current time substep
+
+                q_len = fmax(2 * fabs(q_guess_new - q_guess), id.q_tol);
+                q_guess = q_guess_new;
+                copy_sol(grid, sol, sol_prev);  // copy sol to sol_prev
+                flog << "\n";
+            }
+            q[m] = q_guess;
+            flog << "\n\n";
+        }
 
         // output theta
         ftheta << "m = " << m << endl;

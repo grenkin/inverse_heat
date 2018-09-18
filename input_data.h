@@ -42,6 +42,9 @@ struct InputData {
     SolutionMethod linear_sys_sol_method;
     double Newton_tol;  // tolerance in Newton's method
     double linear_sys_tol;  // tolerance in the linear system solution method
+    // number of start time steps which are to be divided
+    int divided_start_steps;
+    int start_substeps;  // number of substeps in the start time steps
 
     InputData (std::string);
 };

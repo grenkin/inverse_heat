@@ -39,3 +39,6 @@ M = 50
 Newton_tol = 1e-10
 linear_sys_sol_method = u
 # linear_sys_tol = 1e-9
+
+divided_start_steps = 1
+start_substeps = 10

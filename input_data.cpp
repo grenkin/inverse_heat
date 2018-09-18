@@ -143,6 +143,10 @@ InputData::InputData (string input_file_name)
             ("Newton_tol", po::value<double>(), "Tolerance in Newton's method")
             ("linear_sys_tol", po::value<double>(),
                 "Tolerance in the linear system solution method")
+            ("divided_start_steps", po::value<int>(),
+                "Number of start time steps which are to be divided")
+            ("start_substeps", po::value<int>(),
+                "Number of substeps in the start time steps")
         ;
         po::variables_map vm;
         ifstream ifs(input_file_name.c_str());
@@ -191,6 +195,22 @@ InputData::InputData (string input_file_name)
         }
         get_int_param(vm, "N", N);
         get_int_param(vm, "M", M);
+        get_pos_double_param(vm, "Newton_tol", Newton_tol);
+        get_string_param(vm, "linear_sys_sol_method", s);
+        if (s == "m")
+            linear_sys_sol_method = SOL_METHOD_MTL;
+        else if (s == "u")
+            linear_sys_sol_method = SOL_METHOD_UMFPACK;
+        else {
+            print_error(
+                "linear_sys_sol_method doesn't equal either m or u");
+        }
+        if (linear_sys_sol_method == SOL_METHOD_MTL)
+            get_pos_double_param(vm, "linear_sys_tol", linear_sys_tol);
+        get_int_param(vm, "divided_start_steps", divided_start_steps);
+        if (divided_start_steps > 0)
+            get_int_param(vm, "start_substeps", start_substeps);
+
         string theta_0_fun_cmd, theta_0_fun_arg, f_fun_cmd, f_fun_arg,
             g_fun_cmd, g_fun_arg, q_fun_cmd, q_fun_arg, r_fun_cmd, r_fun_arg;
         get_string_param(vm, "theta_0_fun_cmd", theta_0_fun_cmd);
@@ -212,18 +232,6 @@ InputData::InputData (string input_file_name)
             get_string_param(vm, "r_fun_arg", r_fun_arg);
             calc_fun(r_fun_cmd, r_fun_arg, T, M, r);
         }
-        get_pos_double_param(vm, "Newton_tol", Newton_tol);
-        get_string_param(vm, "linear_sys_sol_method", s);
-        if (s == "m")
-            linear_sys_sol_method = SOL_METHOD_MTL;
-        else if (s == "u")
-            linear_sys_sol_method = SOL_METHOD_UMFPACK;
-        else {
-            print_error(
-                "linear_sys_sol_method doesn't equal either m or u");
-        }
-        if (linear_sys_sol_method == SOL_METHOD_MTL)
-            get_pos_double_param(vm, "linear_sys_tol", linear_sys_tol);
     }
     catch (ParamIsNotSet e) {
         print_error("Parameter \"" + e.param + "\" is not specified");
