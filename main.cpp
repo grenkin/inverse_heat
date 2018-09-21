@@ -131,11 +131,30 @@ void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q,
     int N = data.grid.K[0];
     vector<double> c(2);
     c[0] = 1.0;  c[1] = 0.0;
-    for (int i = 0; i < 2; ++i)
-        data.c[i] = c[i] / tau;
-    for (int n = 0; n <= N; ++n) {
-        data.g[0](0, n) = q * id.f[n] + 1. / tau * sol[0](0, n);
-        data.g[1](0, n) = 0.0;
+    if (id.fd_scheme == FD_SCHEME_IMPLICIT_EULER) {
+        for (int i = 0; i < 2; ++i)
+            data.c[i] = c[i] / tau;
+        for (int n = 0; n <= N; ++n) {
+            data.g[0](0, n) = q * id.f[n] + 1. / tau * sol[0](0, n);
+            data.g[1](0, n) = 0.0;
+        }
+    }
+    else {  // id.fd_scheme == FD_SCHEME_CRANK_NICOLSON
+        for (int i = 0; i < 2; ++i)
+            data.c[i] = 2 * c[i] / tau;
+        for (int n = 0; n <= N; ++n) {
+            data.g[0](0, n) = q * id.f[n];
+            data.g[1](0, n) = 0.0;
+        }
+        for (int i = 0; i < 2; ++i)
+            data.c[i] = - data.c[i];
+        // Note: OperatorValue1D() depends on data.g and data.c
+        for (int n = 0; n <= N; ++n) {
+            data.g[0](0, n) = q * id.f[n] - OperatorValue1D(data, sol, 0, 0, n);
+            data.g[1](0, n) = 0.0;
+        }
+        for (int i = 0; i < 2; ++i)
+            data.c[i] = - data.c[i];
     }
     Parameters1D param;
     param.sol_method = id.linear_sys_sol_method;

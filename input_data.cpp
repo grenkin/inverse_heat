@@ -138,6 +138,8 @@ InputData::InputData (string input_file_name)
             ("q_fun_arg", po::value<string>(), "Arguments of q")
             ("r_fun_cmd", po::value<string>(), "Command r")
             ("r_fun_arg", po::value<string>(), "Arguments of r")
+            ("fd_scheme", po::value<string>(),
+                "Finite difference scheme (E - Euler or CN - Crank-Nicolson)")
             ("linear_sys_sol_method", po::value<string>(),
                 "Linear system solution method (m - MTL or u - UMFPACK)")
             ("Newton_tol", po::value<double>(), "Tolerance in Newton's method")
@@ -196,6 +198,13 @@ InputData::InputData (string input_file_name)
         get_int_param(vm, "N", N);
         get_int_param(vm, "M", M);
         get_pos_double_param(vm, "Newton_tol", Newton_tol);
+        get_string_param(vm, "fd_scheme", s);
+        if (s == "E")
+            fd_scheme = FD_SCHEME_IMPLICIT_EULER;
+        else if (s == "CN")
+            fd_scheme = FD_SCHEME_CRANK_NICOLSON;
+        else
+            print_error("fd_scheme doesn't equal either E or CN");
         get_string_param(vm, "linear_sys_sol_method", s);
         if (s == "m")
             linear_sys_sol_method = SOL_METHOD_MTL;

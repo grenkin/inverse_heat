@@ -8,6 +8,8 @@
 // MODE_GIVEN_Q - calculate r(t) for given q(t), then solve the inverse problem
 enum Mode {MODE_GIVEN_R, MODE_GIVEN_Q};
 
+enum FD_Scheme {FD_SCHEME_IMPLICIT_EULER, FD_SCHEME_CRANK_NICOLSON};
+
 struct InputData {
     // lengths of the space and time intervals
     double L, T;
@@ -38,6 +40,8 @@ struct InputData {
     double monot_ver_q_1, monot_ver_q_2, monot_ver_q_step;
     // numbers of nodes of the grids: n = 0, ..., N - space, m = 0, ..., M - time
     int N, M;
+    // finite difference scheme
+    FD_Scheme fd_scheme;
     // linear system solution method
     SolutionMethod linear_sys_sol_method;
     double Newton_tol;  // tolerance in Newton's method
