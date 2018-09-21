@@ -91,6 +91,34 @@ double d_phi_phi (double u)
     return kappa_a;
 }
 
+// calculate phi at t = 0
+void CalcInitialPhi (const Grid1D& grid, GridFunction1D& sol_phi,
+    const InputData& id)
+{
+    Data1D data_phi(1, grid);
+    data_phi.a[0][0] = alpha;
+    data_phi.b[0][0] = data_phi.b[0][1] = gamma;
+    data_phi.w[0][0] = gamma * pow(theta_b1, 4);
+    data_phi.w[0][1] = gamma * pow(theta_b2, 4);
+    data_phi.f[0][0][0] = phi_phi;  data_phi.df[0][0][0] = d_phi_phi;
+    vector<GridFunction1D> sol(1);
+    sol[0].set_grid(grid);
+    for (int n = 0; n <= N; ++n) {
+        data_phi.g[0](0, n) = kappa_a * pow(id.theta_0[n], 4);
+        sol[0](0, n) = 0.0;
+    }
+    Parameters1D param;
+    param.sol_method = id.linear_sys_sol_method;
+    param.max_Newton_iterations = 1;
+    if (id.linear_sys_sol_method == SOL_METHOD_MTL) {
+        param.linear_sys_tol = id.linear_sys_tol;
+        param.max_linear_sys_iterations = 1000000;
+    }
+    SolveBVP1D(data_phi, param, sol);
+    for (int n = 0; n <= N; ++n)
+        sol_phi(0, n) = sol[0](0, n);
+}
+
 // calculate the solution at one time step
 // sol is a vector of size 2:
 //   initially sol contains the solution at the previous time step (m-1),
@@ -259,18 +287,15 @@ int main ()
         for (int m = 1; m <= M; ++m)
             q[m] = id.q[m];
 
-        // set the initial condition
-        {
-            int i = 0;
-            for (int n = 0; n <= N; ++n)
-                sol[i](0, n) = id.theta_0[n];
-            // The solution for i = 1 (phi) is undefined.
-            // The stationary equation for phi has to be solved
-            //   in order to calculate phi at t = 0.
-        }
+        // set theta at t = 0 to theta_0
+        for (int n = 0; n <= N; ++n)
+            sol[0](0, n) = id.theta_0[n];
+        // calculate phi at t = 0
+        CalcInitialPhi(grid, sol[1], id);
 
         // solve the nonstationary problem and calculate r(t)
-        // now sol[0] contains the initial function theta_0 and sol[1] is undefined
+        // now sol[0] contains the initial function theta_0
+        //   and sol[1] contains phi at t = 0
         r[0] = CalcIntegral(grid, sol[0], id);
         for (int m = 1; m <= M; ++m) {
             // now sol contains the solution at the previous time step
@@ -320,13 +345,11 @@ int main ()
     vector<double> q(M + 1);
 
     // sol_prev contains the solution at the previous time step
-    // set the initial condition
-    {
-        int i = 0;
-        for (int n = 0; n <= N; ++n)
-            sol_prev[i](0, n) = id.theta_0[n];
-        // sol_prev[1] (phi) is undefined
-    }
+    // set theta at t = 0 to theta_0
+    for (int n = 0; n <= N; ++n)
+        sol_prev[0](0, n) = id.theta_0[n];
+    // calculate phi at t = 0
+    CalcInitialPhi(grid, sol_prev[1], id);
 
     double q_guess = id.q_init_guess;
     double q_len = id.q_init_len / 2;
