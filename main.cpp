@@ -249,8 +249,10 @@ void write_progress (int m, int M)
         cout << 100 * m / M << "% ";
 }
 
-int main ()
+int main (int argc, char* argv[])
 {
+    bool print_r0 = argc == 2 && string(argv[1]) == "-r0";
+
     InputData id(input_file_name);
     L = id.L;
     T = id.T;
@@ -287,6 +289,18 @@ int main ()
     for (int i = 0; i < 2; ++i) {
         sol[i].set_grid(grid);
         sol_prev[i].set_grid(grid);
+    }
+
+    if (print_r0) {
+        ofstream fout(output_r_file_name);
+        fout.precision(15);
+
+        // set theta at t = 0 to theta_0
+        for (int n = 0; n <= N; ++n)
+            sol[0](0, n) = id.theta_0[n];
+
+        fout << CalcIntegral(grid, sol[0], id);
+        return 0;
     }
 
     // r[m] = r(t_m) = int_0^L g(x) theta(x,t_m) dx, m = 0, 1, ..., M
