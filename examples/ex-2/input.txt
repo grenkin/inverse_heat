@@ -1,0 +1,40 @@
+L = 50
+T = 20
+
+a = 0.92
+alpha = 3.33333333333333
+kappa_a = 0.01
+b = 18.7
+beta = 10
+gamma = 0.3
+theta_b1 = 0.4
+theta_b2 = 0.4
+
+theta_0_fun_cmd = ..\..\fun\const
+theta_0_fun_arg = 0.8
+
+f_fun_cmd = ..\..\fun\const_zero
+f_fun_arg = 0 20  1.0
+g_fun_cmd = ..\..\fun\cos_zero
+g_fun_arg = 30 50  1.0
+
+mode = given_r
+r_fun_cmd = ..\..\fun\const
+r_fun_arg = 8
+
+q_init_guess = 0.0
+q_init_len = 0.01
+q_tol = 1e-5
+
+verify_monotonicity = off
+
+N = 1000
+M = 1000
+
+fd_scheme = E
+
+Newton_tol = 1e-10
+linear_sys_sol_method = u
+
+divided_start_steps = 0
+start_substeps = 5
