@@ -95,26 +95,33 @@ double d_phi_phi (double u)
 void CalcInitialPhi (const Grid1D& grid, GridFunction1D& sol_phi,
     const InputData& id)
 {
-    Data1D data_phi(1, grid);
+    // input data for the FDM solver
+    Data1D data_phi(1, grid);  // TODO: JFDM::Data1D would look better
     data_phi.a[0][0] = alpha;
     data_phi.b[0][0] = data_phi.b[0][1] = gamma;
     data_phi.w[0][0] = gamma * pow(theta_b1, 4);
     data_phi.w[0][1] = gamma * pow(theta_b2, 4);
     data_phi.f[0][0][0] = phi_phi;  data_phi.df[0][0][0] = d_phi_phi;
+    for (int n = 0; n <= N; ++n)
+        data_phi.g[0](0, n) = kappa_a * pow(id.theta_0[n], 4);
+
+    // the solution that will be returned by the FDM solver
     vector<GridFunction1D> sol(1);
     sol[0].set_grid(grid);
-    for (int n = 0; n <= N; ++n) {
-        data_phi.g[0](0, n) = kappa_a * pow(id.theta_0[n], 4);
-        sol[0](0, n) = 0.0;
-    }
-    Parameters1D param;
+    for (int n = 0; n <= N; ++n)
+        sol[0](0, n) = 0.0;  // initial guess
+
+    // parameters of the FDM solver
+    Parameters1D param;  // TODO: JFDM::Parameters1D would look better
     param.sol_method = id.linear_sys_sol_method;
-    param.max_Newton_iterations = 1;
+    param.max_Newton_iterations = 1;  // the equation is linear
     if (id.linear_sys_sol_method == SOL_METHOD_MTL) {
         param.linear_sys_tol = id.linear_sys_tol;
         param.max_linear_sys_iterations = 1000000;
     }
-    SolveBVP1D(data_phi, param, sol);
+
+    // call the FDM solver
+    SolveBVP1D(data_phi, param, sol);  // TODO: JFDM::SolveBVP1D would look better
     for (int n = 0; n <= N; ++n)
         sol_phi(0, n) = sol[0](0, n);
 }

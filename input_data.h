@@ -24,10 +24,10 @@ struct InputData {
     // function g(x) in the integral
     std::vector<double> g;  // vector of length (N + 1)
     // the given function q(t) in the source term
-    // if mode == MODE_GIVEN_Q then q(t) is optional
+    // if mode == MODE_GIVEN_R then q(t) is optional
     std::vector<double> q;  // vector of length (M + 1)
     // the given function r(t)
-    // if mode == MODE_GIVEN_R then r(t) is optional
+    // if mode == MODE_GIVEN_Q then r(t) is optional
     std::vector<double> r;  // vector of length (M + 1)
     // parameters of the bisection method
     double q_init_guess;  // initial guess
