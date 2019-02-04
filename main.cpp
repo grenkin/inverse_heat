@@ -136,6 +136,8 @@ void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q,
     double tau, const InputData& id)
 {
     int N = data.grid.K[0];
+
+    // input data for the FDM solver
     vector<double> c(2);
     c[0] = 1.0;  c[1] = 0.0;
     if (id.fd_scheme == FD_SCHEME_IMPLICIT_EULER) {
@@ -146,7 +148,9 @@ void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q,
             data.g[1](0, n) = 0.0;
         }
     }
-    else {  // id.fd_scheme == FD_SCHEME_CRANK_NICOLSON
+    else if (id.fd_scheme == FD_SCHEME_CRANK_NICOLSON) {
+        // TODO: function for filling the following data
+        //   (for solving nonstationary problems)
         for (int i = 0; i < 2; ++i)
             data.c[i] = 2 * c[i] / tau;
         for (int n = 0; n <= N; ++n) {
@@ -163,6 +167,10 @@ void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q,
         for (int i = 0; i < 2; ++i)
             data.c[i] = - data.c[i];
     }
+    else
+        throw;  // unreachable code
+
+    // parameters of the FDM solver
     Parameters1D param;
     param.sol_method = id.linear_sys_sol_method;
     param.Newton_tol = id.Newton_tol;
@@ -170,6 +178,8 @@ void CalcSol (Data1D& data, vector<GridFunction1D>& sol, double q,
         param.linear_sys_tol = id.linear_sys_tol;
         param.max_linear_sys_iterations = 1000000;
     }
+
+    // call the FDM solver
     SolveBVP1D(data, param, sol);
 }
 
@@ -200,12 +210,13 @@ void copy_sol (const Grid1D& grid,
     }
 }
 
-// solve the equation I(q) = r
+// solve the equation I(q) = r where I(q) = int_0^L g(x) theta(x) dx
 // sol_prev and sol are vectors of size 2:
 //   sol_prev contains the solution at the previous time step
 //   sol will contain the calculated solution at the current time step
 // q_guess is the initial guess for the bisection method
 // q_len is the initial interval length in the bisection method
+// tau is the time grid step
 double Find_q (Data1D& data, const vector<GridFunction1D>& sol_prev,
     vector<GridFunction1D>& sol, double q_guess, double q_len, double r,
     double tau, const InputData& id, ofstream& flog)
@@ -218,8 +229,8 @@ double Find_q (Data1D& data, const vector<GridFunction1D>& sol_prev,
         copy_sol(data.grid, sol_prev, sol);  // copy sol_prev to sol
         len1 *= 2;
         q_1 = q_guess - len1;
-        CalcSol(data, sol, q_1, tau, id);
-        I = CalcIntegral(data.grid, sol[0], id);
+        CalcSol(data, sol, q_1, tau, id);  // sol = solution of equations for q = q_1
+        I = CalcIntegral(data.grid, sol[0], id);  // I = I(q_1)
         flog << "  " << len1 << " (I = " << I << ")";
     } while (I >= r);
     flog << "\nlen2 =";
@@ -227,8 +238,8 @@ double Find_q (Data1D& data, const vector<GridFunction1D>& sol_prev,
         copy_sol(data.grid, sol_prev, sol);  // copy sol_prev to sol
         len2 *= 2;
         q_2 = q_guess + len2;
-        CalcSol(data, sol, q_2, tau, id);
-        I = CalcIntegral(data.grid, sol[0], id);
+        CalcSol(data, sol, q_2, tau, id);  // sol = solution of equations for q = q_2
+        I = CalcIntegral(data.grid, sol[0], id);  // I = I(q_2)
         flog << "  " << len2 << " (I = " << I << ")";
     } while (I <= r);
     flog << "\nq_1 = " << q_1 << "   q_2 = " << q_2 << endl;
@@ -238,8 +249,8 @@ double Find_q (Data1D& data, const vector<GridFunction1D>& sol_prev,
     while (q_2 - q_1 >= id.q_tol) {
         q_guess = (q_1 + q_2) / 2;
         copy_sol(data.grid, sol_prev, sol);  // copy sol_prev to sol
-        CalcSol(data, sol, q_guess, tau, id);
-        I = CalcIntegral(data.grid, sol[0], id);
+        CalcSol(data, sol, q_guess, tau, id);  // sol = solution of equations for q = q_guess
+        I = CalcIntegral(data.grid, sol[0], id);  // I = I(q_guess)
         if (I < r)
             q_1 = q_guess;
         else
@@ -327,6 +338,7 @@ int main (int argc, char* argv[])
         for (int m = 1; m <= M; ++m)
             q[m] = id.q[m];
 
+        // initial conditions
         // set theta at t = 0 to theta_0
         for (int n = 0; n <= N; ++n)
             sol[0](0, n) = id.theta_0[n];
@@ -401,11 +413,10 @@ int main (int argc, char* argv[])
         if (id.verify_monotonicity) {
             // verify monotonicity of the function I(q)
             cout << "Verify monotonicity... ";
-            bool monotone = true;
             flog_monot << "m = " << m << endl;
+            bool monotone = true;
             bool start = true;
-            double I_last;
-            double q_bad;
+            double I_last, q_bad;
             for (double q = id.monot_ver_q_1; q <= id.monot_ver_q_2;
                 q += id.monot_ver_q_step)
             {
